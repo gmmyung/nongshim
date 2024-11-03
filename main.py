@@ -25,14 +25,11 @@ class RealTimeChat:
         silence_duration_ms=500,
         tempreature=0.8,
         input_buffer_size=4096,
-        output_buffer_size=4096,
     ):
         self.input_buffer_size = input_buffer_size
-        self.output_buffer_size = output_buffer_size
         self.input_device_index = input_device_index
         self.output_device_index = output_device_index
         self.input_buffer = deque(maxlen=self.input_buffer_size)
-        self.output_buffer = deque(maxlen=self.output_buffer_size)
         self.voice = voice
         self.turn_threshold = turn_threshold
         self.prefix_padding_ms = prefix_padding_ms
@@ -42,6 +39,7 @@ class RealTimeChat:
             "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
             "OpenAI-Beta": "realtime=v1",
         }
+        self.responses = {}
 
     @classmethod
     async def setup(cls):
@@ -103,13 +101,15 @@ class RealTimeChat:
         return (bytes(), pyaudio.paContinue)
 
     def audio_output_callback(self, in_data, frame_count, time_info, status):
-        buffer_size = len(self.output_buffer)
-        if len(self.output_buffer) > frame_count * self.BYTES_PER_FRAME:
-            output_bytes = [self.output_buffer.popleft() for _ in range(buffer_size)]
-            return (
-                b"".join(output_bytes),
-                pyaudio.paContinue,
-            )
+        total_bytes = self.BYTES_PER_FRAME * frame_count
+        for response in self.responses.values():
+            if len(response.audio) > 0:
+                if len(response.audio) >= self.BYTES_PER_FRAME:
+                    end_idx = min(len(response.audio), total_bytes)
+                    frame = response.audio[:end_idx]
+                    response.audio = response.audio[end_idx:]
+                    frame = bytes(total_bytes - end_idx) + frame
+                    return (frame, pyaudio.paContinue)
         return (bytes(frame_count * self.BYTES_PER_FRAME), pyaudio.paContinue)
 
     async def message_handler(self, message):
@@ -119,12 +119,38 @@ class RealTimeChat:
             future = self.pending_events[message_type].get_nowait()
             future.set_result(data)
             del self.pending_events[message_type]
-        elif message_type == "error":
-            logging.error(json.dumps(data, indent=4))
         elif message_type == "created":
             logging.info(json.dumps(data, indent=4))
+        elif message_type.startswith("input_audio_buffer"):
+            self.input_audio_buffer_message_handler(message_type, data)
+        elif message_type.startswith("response"):
+            self.response_message_handler(message_type, data)
+        elif message_type == "error":
+            logging.error(json.dumps(data, indent=4))
         else:
-            logging.info(json.dumps(data, indent=4))
+            logging.debug(json.dumps(data, indent=4))
+
+    def input_audio_buffer_message_handler(self, message_type, data):
+        message = message_type.split(".")[1]
+        if message == "speech_started":
+            logging.info("User started speaking")
+        elif message == "speech_stopped":
+            logging.info("User stopped speaking")
+        elif message == "committed":
+            logging.info("User input audio buffer was committed")
+
+    def response_message_handler(self, message_type, data):
+        message = message_type.split(".")
+        if message[1] == "created":
+            response_data = data.get("response")
+            response = Response(status=response_data.get("status"))
+            self.responses[response_data.get("id")] = response
+            logging.info("Response was created")
+        elif message[1] == "audio":
+            if message[2] == "delta":
+                delta_bytes = base64.b64decode(data.get("delta"))
+                logging.info(data.get("response_id"))
+                self.responses[data.get("response_id")].audio += delta_bytes
 
     async def run(self):
         self.audio_recorder = AudioRecorder(
@@ -139,22 +165,23 @@ class RealTimeChat:
         )
         message_polling_task = asyncio.create_task(self.message_polling_loop())
         buffer_polling_task = asyncio.create_task(self.input_buffer_polling())
-        update = self.update(
-            instructions="",
-            voice=self.voice,
-            turn_threshold=self.turn_threshold,
-            prefix_padding_ms=self.prefix_padding_ms,
-            silence_duration_ms=self.silence_duration_ms,
-            tempreature=0.8,
-        )
+        # update = self.update(
+        #     instructions="",
+        #     voice=self.voice,
+        #     turn_threshold=self.turn_threshold,
+        #     prefix_padding_ms=self.prefix_padding_ms,
+        #     silence_duration_ms=self.silence_duration_ms,
+        #     tempreature=0.8,
+        # )
 
-        await asyncio.gather(message_polling_task, buffer_polling_task, update)
+        # await asyncio.gather(message_polling_task, buffer_polling_task, update)
+        await asyncio.gather(message_polling_task, buffer_polling_task)
 
     async def input_buffer_polling(self):
         while True:
             try:
                 if len(self.input_buffer) > 0:
-                    logging.info(f"Input buffer size: {len(self.input_buffer)}")
+                    logging.debug(f"Input buffer size: {len(self.input_buffer)}")
                     query_type = "input_audio_buffer.append"
                     input_bytes = bytes(
                         [
@@ -189,6 +216,13 @@ class RealTimeChat:
                 break
 
             await asyncio.sleep(0.01)
+
+
+class Response:
+    def __init__(self, status):
+        self.transcript = ""
+        self.audio = bytes()
+        self.status = status
 
 
 async def main():
