@@ -40,6 +40,7 @@ class RealTimeChat:
             "OpenAI-Beta": "realtime=v1",
         }
         self.responses = {}
+        self.playing = False
 
     @classmethod
     async def setup(cls):
@@ -71,14 +72,14 @@ class RealTimeChat:
                     "type": query_type,
                     "session": {
                         "instructions": instructions,
-                        "voice": voice,
-                        "turn_detection": {
-                            "type": "server_vad",
-                            "threshold": turn_threshold,
-                            "prefix_padding_ms": prefix_padding_ms,
-                            "silence_duration_ms": silence_duration_ms,
-                        },
-                        "temperature": tempreature,
+                        # "voice": voice,
+                        # "turn_detection": {
+                        #     "type": "server_vad",
+                        #     "threshold": turn_threshold,
+                        #     "prefix_padding_ms": prefix_padding_ms,
+                        #     "silence_duration_ms": silence_duration_ms,
+                        # },
+                        # "temperature": tempreature,
                         "input_audio_transcription": {
                             "model": "whisper-1",
                         },
@@ -95,7 +96,8 @@ class RealTimeChat:
             logging.error("Update task was cancelled")
 
     def audio_input_callback(self, in_data, frame_count, time_info, status):
-        self.input_buffer.extend(in_data)
+        if not self.playing:
+            self.input_buffer.extend(in_data)
         if len(self.input_buffer) == self.input_buffer_size:
             logging.info("Input buffer is overflowing")
         return (bytes(), pyaudio.paContinue)
@@ -103,13 +105,14 @@ class RealTimeChat:
     def audio_output_callback(self, in_data, frame_count, time_info, status):
         total_bytes = self.BYTES_PER_FRAME * frame_count
         for response in self.responses.values():
-            if len(response.audio) > 0:
-                if len(response.audio) >= self.BYTES_PER_FRAME:
-                    end_idx = min(len(response.audio), total_bytes)
-                    frame = response.audio[:end_idx]
-                    response.audio = response.audio[end_idx:]
-                    frame = bytes(total_bytes - end_idx) + frame
-                    return (frame, pyaudio.paContinue)
+            if len(response.audio) >= self.BYTES_PER_FRAME:
+                end_idx = min(len(response.audio), total_bytes)
+                frame = response.audio[:end_idx]
+                response.audio = response.audio[end_idx:]
+                frame = bytes(total_bytes - end_idx) + frame
+                self.playing = True
+                return (frame, pyaudio.paContinue)
+        self.playing = False
         return (bytes(frame_count * self.BYTES_PER_FRAME), pyaudio.paContinue)
 
     async def message_handler(self, message):
@@ -128,7 +131,7 @@ class RealTimeChat:
         elif message_type == "error":
             logging.error(json.dumps(data, indent=4))
         else:
-            logging.debug(json.dumps(data, indent=4))
+            logging.info(json.dumps(data, indent=4))
 
     def input_audio_buffer_message_handler(self, message_type, data):
         message = message_type.split(".")[1]
@@ -138,6 +141,8 @@ class RealTimeChat:
             logging.info("User stopped speaking")
         elif message == "committed":
             logging.info("User input audio buffer was committed")
+        else:
+            logging.info(json.dumps(data, indent=4))
 
     def response_message_handler(self, message_type, data):
         message = message_type.split(".")
@@ -151,6 +156,19 @@ class RealTimeChat:
                 delta_bytes = base64.b64decode(data.get("delta"))
                 logging.info(data.get("response_id"))
                 self.responses[data.get("response_id")].audio += delta_bytes
+            elif message[2] == "done":
+                logging.info("Response audio was done")
+            else:
+                logging.info(json.dumps(data, indent=4))
+        elif message[1] == "audio_transcript":
+            if message[2] == "delta":
+                self.responses[data.get("response_id")].transcript += data.get("delta")
+            elif message[2] == "done":
+                logging.info(
+                    f"CHATBOT: {self.responses[data.get('response_id')].transcript}"
+                )
+            else:
+                logging.info(json.dumps(data, indent=4))
 
     async def run(self):
         self.audio_recorder = AudioRecorder(
@@ -165,17 +183,16 @@ class RealTimeChat:
         )
         message_polling_task = asyncio.create_task(self.message_polling_loop())
         buffer_polling_task = asyncio.create_task(self.input_buffer_polling())
-        # update = self.update(
-        #     instructions="",
-        #     voice=self.voice,
-        #     turn_threshold=self.turn_threshold,
-        #     prefix_padding_ms=self.prefix_padding_ms,
-        #     silence_duration_ms=self.silence_duration_ms,
-        #     tempreature=0.8,
-        # )
+        update = self.update(
+            instructions="You are an assisting robot for elderly farmers in Korea. Talk in Korean. Try to act like a 20 y/o human. Be spontaneous, ask random questions if necessary, and do not make it cringe. Be empathetic, but do not give an impression that you are empathetic since this can offend the farmer. Keep your response short like how most humans talk. You are trying to be a honest friend to him, so do not give him generic response, and you don't need to end your sentence conclusively or ask questions every time. Speak in a fast pace, and make sure to talk naturally by using filler words.",
+            voice=self.voice,
+            turn_threshold=self.turn_threshold,
+            prefix_padding_ms=self.prefix_padding_ms,
+            silence_duration_ms=self.silence_duration_ms,
+            tempreature=0.8,
+        )
 
-        # await asyncio.gather(message_polling_task, buffer_polling_task, update)
-        await asyncio.gather(message_polling_task, buffer_polling_task)
+        await asyncio.gather(message_polling_task, buffer_polling_task, update)
 
     async def input_buffer_polling(self):
         while True:
@@ -203,7 +220,7 @@ class RealTimeChat:
                 logging.warning("Connection closed")
                 break
 
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.05)
 
     async def message_polling_loop(self):
         while True:
@@ -215,7 +232,7 @@ class RealTimeChat:
                 logging.warning("Connection closed")
                 break
 
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.05)
 
 
 class Response:
