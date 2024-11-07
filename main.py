@@ -83,6 +83,18 @@ class RealTimeChat:
                         "input_audio_transcription": {
                             "model": "whisper-1",
                         },
+                        "tools": [
+                            {
+                                "type": "function",
+                                "name": "get_weather",
+                                "description": "Get the current weather for a location, tell the user you are fetching the weather.",
+                                "parameters": {
+                                    "type": "object",
+                                    "properties": {"location": {"type": "string"}},
+                                    "required": ["location"],
+                                },
+                            }
+                        ],
                     },
                 },
             )
