@@ -134,6 +134,32 @@ class RealTimeChat:
             future = self.pending_events[message_type].get_nowait()
             future.set_result(data)
             del self.pending_events[message_type]
+
+        elif message_type == "conversation.item.created":
+            item = data.get("item", {})
+            item_type = item.get("type")
+            item_id = item.get("id")
+            call_id = item.get("call_id")
+
+            if item_type == "function_call" and item.get("name") == "get_weather":
+                logging.info("Processing function call: get_weather")
+
+                function_response = await self.get_weather(location="Daejeon")
+                logging.info(f"Function response: {function_response}")
+
+                await self.websocket.send(
+                    json.dumps({
+                        "type": "conversation.item.create",
+                        "item": {
+                            "id": item_id,
+                            "type": "function_call_output",
+                            "call_id": call_id,
+                            "output": json.dumps(function_response)
+                        }
+                    })
+                )
+                logging.info(f"Sent function response")
+
         elif message_type == "created":
             logging.info(json.dumps(data, indent=4))
         elif message_type.startswith("input_audio_buffer"):
@@ -144,6 +170,16 @@ class RealTimeChat:
             logging.error(json.dumps(data, indent=4))
         else:
             logging.info(json.dumps(data, indent=4))
+
+    async def get_weather(self, location):
+        # 가상의 데이터를 반환하거나 실제 API 호출을 추가 가능
+        weather_data = {
+            "temperature": "20°C",
+            "description": "Clear sky",
+            "location": location
+        }
+        # logging.info(f"get_weather result for {location}: {weather_data}")
+        return weather_data
 
     def input_audio_buffer_message_handler(self, message_type, data):
         message = message_type.split(".")[1]
@@ -196,7 +232,9 @@ class RealTimeChat:
         message_polling_task = asyncio.create_task(self.message_polling_loop())
         buffer_polling_task = asyncio.create_task(self.input_buffer_polling())
         update = self.update(
-            instructions="You are an assisting robot for elderly farmers in Korea. Talk in Korean. Try to act like a 20 y/o human. Be spontaneous, ask random questions if necessary, and do not make it cringe. Be empathetic, but do not give an impression that you are empathetic since this can offend the farmer. Keep your response short like how most humans talk. You are trying to be a honest friend to him, so do not give him generic response, and you don't need to end your sentence conclusively or ask questions every time. Speak in a fast pace, and make sure to talk naturally by using filler words.",
+            instructions=(
+                "You are an assisting robot for elderly farmers in Korea. Talk in Korean. Try to act like a 20 y/o human. Be spontaneous, ask random questions if necessary, and do not make it cringe. Be empathetic, but do not give an impression that you are empathetic since this can offend the farmer. Keep your response short like how most humans talk. You are trying to be a honest friend to him, so do not give him generic response, and you don't need to end your sentence conclusively or ask questions every time. Speak in a fast pace, and make sure to talk naturally by using filler words."
+            ),
             voice=self.voice,
             turn_threshold=self.turn_threshold,
             prefix_padding_ms=self.prefix_padding_ms,
@@ -261,10 +299,9 @@ async def main():
 
 
 if __name__ == "__main__":
-    from rich.logging import RichHandler
 
     FORMAT = "%(message)s"
     logging.basicConfig(
-        level="INFO", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+        level="INFO", format=FORMAT, datefmt="[%X]"
     )
     asyncio.run(main())
