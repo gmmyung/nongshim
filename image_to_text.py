@@ -14,7 +14,7 @@ class Tool:
 
 # Define the Webcam Capture and Description Tool
 class ImageDescriptionTool(Tool):
-    def __init__(self, openai_api_key):
+    def __init__(self, openai_api_key, stream):
         self.name = "image_description"
         self.description = {
             "type": "function",
@@ -25,7 +25,7 @@ class ImageDescriptionTool(Tool):
         self.openai_api_key = openai_api_key
         self.function = self.capture_and_describe_image
         self.client = AsyncOpenAI()
-        self.cap = cv2.VideoCapture(0)
+        self.cap = stream
 
     async def capture_and_describe_image(self, arguments):
         image = self.capture_image()

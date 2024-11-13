@@ -5,10 +5,12 @@ import os
 from collections import deque
 import logging
 from typing import List
+import cv2
 from dotenv import load_dotenv
 import pyaudio
 import websockets
 from audio import AudioPlayer, AudioRecorder
+from heart_rate import HeartRateMonitor
 from image_to_text import ImageDescriptionTool
 
 
@@ -291,8 +293,10 @@ class Response:
 async def main():
     load_dotenv()
     weather = Weather()
-    image_description = ImageDescriptionTool(os.getenv("OPENAI_API_KEY"))
-    chat = await RealTimeChat.setup(tools=[weather, image_description])
+    stream = cv2.VideoCapture(0)
+    heart_rate = HeartRateMonitor(stream=stream, sampling_rate=30, roi_size=20, update_interval=20)
+    image_description = ImageDescriptionTool(os.getenv("OPENAI_API_KEY"), stream)
+    chat = await RealTimeChat.setup(tools=[weather, image_description, heart_rate])
     await chat.run()
 
 
