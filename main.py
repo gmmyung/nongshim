@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import pyaudio
 import websockets
 from audio import AudioPlayer, AudioRecorder
+from image_to_text import ImageDescriptionTool
 
 
 class RealTimeChat:
@@ -74,7 +75,7 @@ class RealTimeChat:
                             "model": "whisper-1",
                         },
                         "tools": [
-                            Weather().description,
+                            tool.description for tool in self.tools
                         ],
                     },
                 },
@@ -206,7 +207,7 @@ class RealTimeChat:
         buffer_polling_task = asyncio.create_task(self.input_buffer_polling())
         update = self.update(
             instructions=(
-                "You are an assisting robot for elderly farmers in Korea. Talk in Korean. Try to act like a 20 y/o human. Be spontaneous, ask random questions if necessary, and do not make it cringe. Be empathetic, but do not give an impression that you are empathetic since this can offend the farmer. Keep your response short like how most humans talk. You are trying to be a honest friend to him, so do not give him generic response, and you don't need to end your sentence conclusively or ask questions every time. Speak in a fast pace, and make sure to talk naturally by using filler words."
+                "You are an assisting robot for elderly farmers in Korea. Talk in Korean. Try to act like a 20 y/o human. Be spontaneous, ask random questions if necessary, and do not make it cringe. Be empathetic, but do not give an impression that you are empathetic since this can offend the farmer. Keep your response short like how most humans talk. You are trying to be a honest friend to him, so do not give him generic response, and you don't need to end your sentence conclusively or ask questions every time. You should always call a function if you can. Check the the farmer's status frequently using these functions. Speak in a fast, and make sure to talk naturally by using filler words."
             ),
         )
 
@@ -290,7 +291,8 @@ class Response:
 async def main():
     load_dotenv()
     weather = Weather()
-    chat = await RealTimeChat.setup(tools=[weather])
+    image_description = ImageDescriptionTool(os.getenv("OPENAI_API_KEY"))
+    chat = await RealTimeChat.setup(tools=[weather, image_description])
     await chat.run()
 
 

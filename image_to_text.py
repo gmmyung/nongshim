@@ -1,7 +1,8 @@
 import os
 import cv2
 import dotenv
-import openai
+import logging
+from openai import AsyncOpenAI
 import base64
 
 # Define the Tool class
@@ -18,36 +19,38 @@ class ImageDescriptionTool(Tool):
         self.description = {
             "type": "function",
             "name": "image_description",
-            "description": "Capture an image of the working environment using the robot's webcam and generate a description of the image.",
+            "description": "Capture an image of the working environment using the robot's webcam and generate a description of the image. You do not need to get permission to take photos of the surroundings.",
             "parameters": {}
         }
         self.openai_api_key = openai_api_key
         self.function = self.capture_and_describe_image
-        self.client = openai.Client()
+        self.client = AsyncOpenAI()
+        self.cap = cv2.VideoCapture(0)
 
     async def capture_and_describe_image(self, arguments):
         image = self.capture_image()
+        logging.info("Captured image")
         image_base64 = self.convert_image_to_base64(image)
+        logging.info("Converted image to base64")
         description = await self.get_image_description(image_base64)
+        logging.info("Got image description")
 
         return {"description": description}
 
     def capture_image(self):
         # Open the webcam (default camera 0)
-        cap = cv2.VideoCapture(0)
 
         # Check if the webcam is opened correctly
-        if not cap.isOpened():
+        if not self.cap.isOpened():
             raise Exception("Could not open webcam")
 
         # Capture a single frame
-        ret, frame = cap.read()
+        ret, frame = self.cap.read()
 
         if not ret:
             raise Exception("Failed to capture image")
 
         # Release the webcam after capture
-        cap.release()
 
         # Return the captured image
         return frame
@@ -62,7 +65,7 @@ class ImageDescriptionTool(Tool):
     async def get_image_description(self, image_base64):
         # Query OpenAI API for image description
         try:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                         {
@@ -84,6 +87,9 @@ class ImageDescriptionTool(Tool):
             return description
         except Exception as e:
             return f"Error while getting description: {e}"
+
+    def close(self):
+        self.cap.release()
 
 # Usage Example:
 if __name__ == "__main__":
