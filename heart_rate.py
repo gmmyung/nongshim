@@ -58,7 +58,7 @@ class HeartRateMonitor(Tool):
             return signal * window
 
         def get_forehead_coordinates(face_landmarks, frame_width, frame_height):
-            forehead_points = [face_landmarks.landmark[i] for i in [10, 338, 297, 332]]
+            forehead_points = [face_landmarks.landmark[i] for i in [330, 425, 280]]
             forehead_x = int(np.mean([p.x * frame_width for p in forehead_points]))
             forehead_y = int(np.mean([p.y * frame_height for p in forehead_points]))
             return forehead_x, forehead_y
@@ -95,6 +95,9 @@ class HeartRateMonitor(Tool):
                 n = len(windowed_signal)
                 freqs = np.fft.fftfreq(n, d=1 / self.sampling_rate)
                 fft_values = np.abs(fft(windowed_signal - np.mean(windowed_signal)))
+
+                # Smooth FFT values
+                fft_values = np.convolve(fft_values, np.ones(5) / 5, mode="same")
 
                 valid_freqs = (freqs > 1.0) & (freqs < 3.0)
                 valid_fft_values = fft_values[valid_freqs]
@@ -136,9 +139,9 @@ async def main():
         
         # Periodically call get_heart_rate at regular intervals (e.g., every 3 seconds)
         while True:
-            heart_rate = await heart_rate_tool.function()
+            heart_rate = await heart_rate_tool.function({})
             if heart_rate is not None:
-                print(f"Latest Heart Rate: {heart_rate:.2f} bpm")
+                print(f"Latest Heart Rate: {(heart_rate['heart_rate']):.2f} bpm")
             else:
                 print("Waiting for heart rate to be calculated...")
 

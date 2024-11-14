@@ -143,6 +143,30 @@ class RealTimeChat:
                                 }
                             )
                         )
+                        # await self.websocket.send(
+                        #     json.dumps(
+                        #         {
+                        #             "type": "conversation.item.create",
+                        #             "item": {
+                        #                 "type": "message",
+                        #                 "role": "user",
+                        #                 "status": "completed",
+                        #                 "content": [{
+                        #                     "type": "input_text",
+                        #                     "text": "Continue talking to the user.",
+                        #                 }],
+                        #             },
+                        #         }
+                        #     )
+                        # )
+                        await self.websocket.send(
+                            json.dumps(
+                                {
+                                    "type": "response.create",
+                                }
+                            )
+                        )
+                        
                         logging.info(f"Sent function response")
                         break
 
@@ -209,7 +233,7 @@ class RealTimeChat:
         buffer_polling_task = asyncio.create_task(self.input_buffer_polling())
         update = self.update(
             instructions=(
-                "You are an assisting robot for elderly farmers in Korea. Talk in Korean. Try to act like a 20 y/o human. Be spontaneous, ask random questions if necessary, and do not make it cringe. Be empathetic, but do not give an impression that you are empathetic since this can offend the farmer. Keep your response short like how most humans talk. You are trying to be a honest friend to him, so do not give him generic response, and you don't need to end your sentence conclusively or ask questions every time. You should always call a function if you can. Check the the farmer's status frequently using these functions. Speak in a fast, and make sure to talk naturally by using filler words."
+                "You are an assisting robot for elderly farmers in Korea. Talk in Korean. Try to act like a 20 y/o human. Be spontaneous, ask random questions if necessary, and do not make it cringe. Be empathetic, but do not give an impression that you are empathetic since this can offend the farmer. Keep your response short like how most humans talk. You are trying to be a honest friend to him, so do not give him generic response, and you don't need to end your sentence conclusively or ask questions every time. You should always call a function if you can. Check the the farmer's status frequently using these functions. Speak in a fast, and make sure to talk naturally by using filler words. Monitor the user's tone and screaming sound to detect accidents, and call for emergency services if so."
             ),
         )
 
