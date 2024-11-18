@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rover Joystick</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+        #joystick-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            background-color: #ddd;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #joystick {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background-color: #555;
+            border-radius: 50%;
+            touch-action: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="joystick-container">
+        <div id="joystick"></div>
+    </div>
+
+    <script>
+        const joystick = document.getElementById('joystick');
+        const container = document.getElementById('joystick-container');
+        const centerX = container.offsetWidth / 2;
+        const centerY = container.offsetHeight / 2;
+
+        let isDragging = false;
+
+        joystick.addEventListener('pointerdown', (event) => {
+            isDragging = true;
+        });
+
+        document.addEventListener('pointermove', (event) => {
+            if (!isDragging) return;
+
+            const rect = container.getBoundingClientRect();
+            const x = event.clientX - rect.left - centerX;
+            const y = event.clientY - rect.top - centerY;
+            const distance = Math.sqrt(x * x + y * y);
+            const maxDistance = centerX - joystick.offsetWidth / 2;
+
+            // Limit joystick to the container boundary
+            const angle = Math.atan2(y, x);
+            const limitedDistance = Math.min(distance, maxDistance);
+            const limitedX = limitedDistance * Math.cos(angle);
+            const limitedY = limitedDistance * Math.sin(angle);
+
+            joystick.style.transform = `translate(${limitedX}px, ${limitedY}px)`;
+
+            // Normalize inputs to range [-1, 1]
+            const normalizedX = limitedX / maxDistance;
+            const normalizedY = -limitedY / maxDistance; // Invert Y for intuitive movement
+
+            // Send velocity (Y-axis) and steering (X-axis) inputs
+            sendInput({ velocity: normalizedY, steering: normalizedX });
+        });
+
+        document.addEventListener('pointerup', () => {
+            isDragging = false;
+            joystick.style.transform = 'translate(0, 0)';
+            sendInput({ velocity: 0, steering: 0 }); // Reset inputs on release
+        });
+
+        async function sendInput(input) {
+            await fetch(`/input`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(input)
+            });
+        }
+    </script>
+</body>
+</html>
+

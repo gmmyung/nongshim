@@ -9,7 +9,9 @@ import cv2
 from dotenv import load_dotenv
 import pyaudio
 import websockets
+from websockets.client import ClientConnection
 from audio import AudioPlayer, AudioRecorder
+from control import run_server
 from heart_rate import HeartRateMonitor
 from image_to_text import ImageDescriptionTool
 
@@ -28,7 +30,6 @@ class RealTimeChat:
         turn_threshold=0.5,
         prefix_padding_ms=300,
         silence_duration_ms=500,
-        tempreature=0.8,
         input_buffer_size=4096,
     ):
         self.input_buffer_size = input_buffer_size
@@ -91,14 +92,14 @@ class RealTimeChat:
         except asyncio.CancelledError:
             logging.error("Update task was cancelled")
 
-    def audio_input_callback(self, in_data, frame_count, time_info, status):
+    def audio_input_callback(self, in_data, _frame_count, _time_info, _status):
         if not self.playing:
             self.input_buffer.extend(in_data)
         if len(self.input_buffer) == self.input_buffer_size:
             logging.info("Input buffer is overflowing")
         return (bytes(), pyaudio.paContinue)
 
-    def audio_output_callback(self, in_data, frame_count, time_info, status):
+    def audio_output_callback(self, _in_data, frame_count, _time_info, _status):
         total_bytes = self.BYTES_PER_FRAME * frame_count
         for response in self.responses.values():
             if len(response.audio) >= self.BYTES_PER_FRAME:
@@ -143,22 +144,6 @@ class RealTimeChat:
                                 }
                             )
                         )
-                        # await self.websocket.send(
-                        #     json.dumps(
-                        #         {
-                        #             "type": "conversation.item.create",
-                        #             "item": {
-                        #                 "type": "message",
-                        #                 "role": "user",
-                        #                 "status": "completed",
-                        #                 "content": [{
-                        #                     "type": "input_text",
-                        #                     "text": "Continue talking to the user.",
-                        #                 }],
-                        #             },
-                        #         }
-                        #     )
-                        # )
                         await self.websocket.send(
                             json.dumps(
                                 {
@@ -321,7 +306,10 @@ async def main():
     heart_rate = HeartRateMonitor(stream=stream, sampling_rate=30, roi_size=20, update_interval=20)
     image_description = ImageDescriptionTool(os.getenv("OPENAI_API_KEY"), stream)
     chat = await RealTimeChat.setup(tools=[weather, image_description, heart_rate])
-    await chat.run()
+    chat_task = asyncio.create_task(chat.run())
+    control_task = asyncio.create_task(run_server())
+
+    await asyncio.gather(chat_task, control_task)
 
 
 if __name__ == "__main__":
