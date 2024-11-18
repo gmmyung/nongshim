@@ -9,9 +9,8 @@ import cv2
 from dotenv import load_dotenv
 import pyaudio
 import websockets
-from websockets.client import ClientConnection
 from audio import AudioPlayer, AudioRecorder
-from control import run_server
+from control import ControlServer
 from heart_rate import HeartRateMonitor
 from image_to_text import ImageDescriptionTool
 
@@ -307,7 +306,8 @@ async def main():
     image_description = ImageDescriptionTool(os.getenv("OPENAI_API_KEY"), stream)
     chat = await RealTimeChat.setup(tools=[weather, image_description, heart_rate])
     chat_task = asyncio.create_task(chat.run())
-    control_task = asyncio.create_task(run_server())
+    control_server = ControlServer()
+    control_task = asyncio.create_task(control_server.run_server())
 
     await asyncio.gather(chat_task, control_task)
 
