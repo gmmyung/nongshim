@@ -14,7 +14,7 @@ class Tool:
         self.function = function
 
 class HeartRateMonitor(Tool):
-    def __init__(self, stream, sampling_rate=30, roi_size=20, update_interval=20):
+    def __init__(self, stream, sampling_rate=30, roi_size=20, update_interval=100):
         """
         Initializes the HeartRateMonitor class with an external cv2 VideoCapture stream.
         
@@ -135,7 +135,7 @@ async def main():
     if not cap.isOpened():
         logging.error("Error opening video stream.")
     else:
-        heart_rate_tool = HeartRateMonitor(cap, update_interval=10, sampling_rate=30)  # Update every 10 seconds, sampling rate of 30 fps
+        heart_rate_tool = HeartRateMonitor(cap, update_interval=100, sampling_rate=30)  # Update every 10 seconds, sampling rate of 30 fps
         
         # Periodically call get_heart_rate at regular intervals (e.g., every 3 seconds)
         while True:
