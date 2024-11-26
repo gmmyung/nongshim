@@ -1,12 +1,13 @@
 from aiohttp import web
 from gpiozero import PhaseEnableMotor
 import asyncio
+import pose_estimate
 
 class ControlServer:
     # HTML content for the webpage (from "index.html")
     HTML = open("index.html", "r").read()
 
-    def __init__(self) -> None:
+    def __init__(self, pose_estimator: pose_estimate.PoseEstimator) -> None:
         self.autonomous = False
         self.lf_motor = PhaseEnableMotor(7, 8)
         self.rf_motor = PhaseEnableMotor(6, 13)
@@ -16,6 +17,7 @@ class ControlServer:
         self.rf_motor.enable_device.frequency = 500
         self.lr_motor.enable_device.frequency = 500
         self.rr_motor.enable_device.frequency = 500
+        self.pose_estimator = pose_estimator
 
     async def handle_abort(self, _):
         self.lf_motor.stop()
@@ -51,11 +53,31 @@ class ControlServer:
 
         if not self.autonomous:
             self.control(velocity, steering)
+        else:
+            pose_info = await self.pose_estimator.get_current_pose()
+            if pose_info:
+                direction = pose_info.get("direction", None)
+                distance = pose_info.get("distance", None)
+
+                if distance > 1.5:
+                    velocity = 0.2
+                else:
+                    velocity = 0.0
+                if direction > 0.3:
+                    steering  = -0.1
+                elif direction < -0.3:
+                    steering = 0.1
+                else:
+                    steering = 0.0
+                print(f"Received input: Velocity={velocity:.2f}, Steering={steering:.2f}")
+                self.control(velocity, steering)
+
 
         return web.Response(text="Input received")
 
     async def handle_autonomous(self, request):
         self.autonomous = request.json().get("autonomous", False)
+        print(f"Autonomous mode updated: {self.autonomous}")
         return web.Response(text="Autonomous mode updated")
 
     # Main function to set up the server
