@@ -8,7 +8,7 @@ class ControlServer:
 
     def __init__(self) -> None:
         self.lf_motor = PhaseEnableMotor(7, 8)
-        self.rf_motor = PhaseEnableMotor(6, 1)
+        self.rf_motor = PhaseEnableMotor(6, 13)
         self.lr_motor = PhaseEnableMotor(24, 23)
         self.rr_motor = PhaseEnableMotor(19, 26)
         self.lf_motor.enable_device.frequency = 500
