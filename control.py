@@ -16,7 +16,7 @@ class ControlServer:
         self.lr_motor.enable_device.frequency = 500
         self.rr_motor.enable_device.frequency = 500
 
-    async def abort(self):
+    async def abort(self, _):
         self.lf_motor.stop()
         self.rf_motor.stop()
         self.lr_motor.stop()
