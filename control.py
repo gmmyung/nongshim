@@ -53,27 +53,35 @@ class ControlServer:
 
         if not self.autonomous:
             self.control(velocity, steering)
-        else:
-            pose_info = await self.pose_estimator.get_current_pose()
-            if pose_info:
-                direction = pose_info.get("direction", None)
-                distance = pose_info.get("distance", None)
-
-                if distance > 1.5:
-                    velocity = 0.2
-                else:
-                    velocity = 0.0
-                if direction > 0.3:
-                    steering  = -0.1
-                elif direction < -0.3:
-                    steering = 0.1
-                else:
-                    steering = 0.0
-                print(f"Received input: Velocity={velocity:.2f}, Steering={steering:.2f}")
-                self.control(velocity, steering)
-
-
         return web.Response(text="Input received")
+
+
+    async def autonomous_control_loop(self):
+        while True:
+            if self.autonomous:
+                pose_info = await self.pose_estimator.get_current_pose()
+                if pose_info:
+                    direction = pose_info.get("direction", None)
+                    distance = pose_info.get("distance", None)
+                    velocity = 0.0
+                    steering = 0.0
+
+                    if distance is not None:
+                        if distance > 1.5:
+                            velocity = 0.2
+                        else:
+                            velocity = 0.0
+
+                    if direction is not None:
+                        if direction > 0.3:
+                            steering = 0.5
+                        elif direction < -0.3:
+                            steering = -0.5
+
+                    print(f"[Autonomous] Velocity={velocity:.2f}, Steering={steering:.2f}")
+                    self.control(velocity, steering)
+
+                await asyncio.sleep(0.1)
 
     async def handle_autonomous(self, request):
         print(request)
@@ -95,7 +103,10 @@ class ControlServer:
         print("Server running on http://localhost:8080")
         await site.start()
         # Keep running
-        await asyncio.Event().wait()
+        polling_task = asyncio.create_task(self.autonomous_control_loop())
+        server_task = asyncio.create_task(asyncio.Event().wait())
+        await asyncio.gather(polling_task, server_task)
+
 
 async def main():
     import cv2
