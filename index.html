@@ -7,6 +7,7 @@
     <style>
         body {
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
@@ -32,16 +33,32 @@
             border-radius: 50%;
             touch-action: none;
         }
+        #abort-button {
+            margin-top: 20px;
+            padding: 20px 40px;
+            font-size: 20px;
+            color: white;
+            background-color: red;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+        #abort-button:active {
+            transform: scale(0.95);
+        }
     </style>
 </head>
 <body>
     <div id="joystick-container">
         <div id="joystick"></div>
     </div>
+    <button id="abort-button">ABORT</button>
 
     <script>
         const joystick = document.getElementById('joystick');
         const container = document.getElementById('joystick-container');
+        const abortButton = document.getElementById('abort-button');
         const centerX = container.offsetWidth / 2;
         const centerY = container.offsetHeight / 2;
 
@@ -82,6 +99,10 @@
             sendInput({ velocity: 0, steering: 0 }); // Reset inputs on release
         });
 
+        abortButton.addEventListener('click', () => {
+            sendAbort();
+        });
+
         async function sendInput(input) {
             await fetch(`/input`, {
                 method: 'POST',
@@ -89,7 +110,14 @@
                 body: JSON.stringify(input)
             });
         }
+
+        async function sendAbort() {
+            await fetch(`/abort`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            alert("Abort signal sent!");
+        }
     </script>
 </body>
 </html>
-

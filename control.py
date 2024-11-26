@@ -16,6 +16,16 @@ class ControlServer:
         self.lr_motor.enable_device.frequency = 500
         self.rr_motor.enable_device.frequency = 500
 
+    async def abort(self):
+        self.lf_motor.stop()
+        self.rf_motor.stop()
+        self.lr_motor.stop()
+        self.rr_motor.stop()
+
+        # Exit the program
+        loop = asyncio.get_event_loop()
+        loop.stop()
+
     # Handle the root page
     async def handle_index(self, _):
         return web.Response(text=self.HTML, content_type='text/html')
@@ -42,6 +52,7 @@ class ControlServer:
         app = web.Application()
         app.router.add_get('/', self.handle_index)
         app.router.add_post('/input', self.handle_input)
+        app.router.add_post('/abort', self.abort)
 
         runner = web.AppRunner(app)
         await runner.setup()
