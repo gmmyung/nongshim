@@ -47,26 +47,15 @@ class PoseEstimator(Tool):
                     landmark_drawing_spec=self.mp_drawing.DrawingSpec(color=(245,117,66), thickness=2, circle_radius=2),
                     connection_drawing_spec=self.mp_drawing.DrawingSpec(color=(245,66,230), thickness=2, circle_radius=2)
                 )
-                self.emphasize_landmarks(image, results.pose_landmarks)
                 self.fall_detected = self.detect_fall(results.pose_landmarks)
 
                 self.latest_position = self.calculate_farmer_position(results.pose_landmarks)
-
-                if self.fall_detected:
-                    cv2.putText(image, "Fall detected!", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-
-            # Convert back to BGR for OpenCV
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            cv2.imshow("Pose Estimation", image)
-
-            # Break gracefully by pressing 'q'
-            if cv2.waitKey(5) & 0xFF == 113:  # ASCII for 'q'
-                break
 
             # Maintain frame rate
             elapsed_time = asyncio.get_event_loop().time() - start_time
             await asyncio.sleep(max(0, (1/30) - elapsed_time))  # Assuming 30 fps
 
+            print("-------")
 
     async def get_current_pose(self):
         """
@@ -101,10 +90,14 @@ class PoseEstimator(Tool):
             if world_landmarks:
                 left_shoulder_world = world_landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_SHOULDER]
                 right_shoulder_world = world_landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_SHOULDER]
+                if left_shoulder_world is None or right_shoulder_world is None:
+                    return None
                 shoulder_distance_world = math.sqrt(
                     (left_shoulder_world.x - right_shoulder_world.x) ** 2 +
                     (left_shoulder_world.y - right_shoulder_world.y) ** 2
                 )
+            else:
+                return None
 
             # 2D screen coordinate distance
             shoulder_distance_pixel = math.sqrt(
@@ -234,7 +227,6 @@ async def main():
             print("Stopping...")
 
     cap.release()
-    cv2.destroyAllWindows()
 
 
 # Run the asyncio event loop
