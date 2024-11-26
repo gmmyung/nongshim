@@ -13,11 +13,12 @@ class Tool:
         self.description = description
         self.function = function
 
+
 class HeartRateMonitor(Tool):
     def __init__(self, stream, sampling_rate=30, roi_size=20, update_interval=100):
         """
         Initializes the HeartRateMonitor class with an external cv2 VideoCapture stream.
-        
+
         :param stream: cv2.VideoCapture object for accessing video stream.
         :param sampling_rate: Number of frames per second to sample.
         :param roi_size: Size of the region of interest around the forehead.
@@ -46,7 +47,9 @@ class HeartRateMonitor(Tool):
         """
         # MediaPipe setup
         mp_face_mesh = mp.solutions.face_mesh
-        face_mesh = mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=1, min_detection_confidence=0.5)
+        face_mesh = mp_face_mesh.FaceMesh(
+            static_image_mode=False, max_num_faces=1, min_detection_confidence=0.5
+        )
 
         # Initialize variables
         green_channel_values = []
@@ -79,10 +82,15 @@ class HeartRateMonitor(Tool):
             if results.multi_face_landmarks:
                 for face_landmarks in results.multi_face_landmarks:
                     h, w, _ = frame.shape
-                    forehead_x, forehead_y = get_forehead_coordinates(face_landmarks, w, h)
+                    forehead_x, forehead_y = get_forehead_coordinates(
+                        face_landmarks, w, h
+                    )
 
                     # Define ROI for the forehead area
-                    roi = frame[forehead_y - self.roi_size:forehead_y + self.roi_size, forehead_x - self.roi_size:forehead_x + self.roi_size]
+                    roi = frame[
+                        forehead_y - self.roi_size : forehead_y + self.roi_size,
+                        forehead_x - self.roi_size : forehead_x + self.roi_size,
+                    ]
 
                     if roi.size > 0:
                         green_channel = np.mean(roi[:, :, 1])
@@ -115,7 +123,9 @@ class HeartRateMonitor(Tool):
 
             # Calculate elapsed time for the frame and adjust sleep time to match sampling rate
             elapsed_time = time.time() - start_time
-            sleep_time = max(0, (1 / self.sampling_rate) - elapsed_time)  # Ensure non-negative sleep time
+            sleep_time = max(
+                0, (1 / self.sampling_rate) - elapsed_time
+            )  # Ensure non-negative sleep time
             await asyncio.sleep(sleep_time)  # Sleep to maintain the desired frame rate
 
     async def get_heart_rate(self, args):
@@ -129,14 +139,17 @@ class HeartRateMonitor(Tool):
             logging.warning("Heart rate not yet calculated.")
             return None
 
+
 # Example usage:
 async def main():
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         logging.error("Error opening video stream.")
     else:
-        heart_rate_tool = HeartRateMonitor(cap, update_interval=100, sampling_rate=30)  # Update every 10 seconds, sampling rate of 30 fps
-        
+        heart_rate_tool = HeartRateMonitor(
+            cap, update_interval=100, sampling_rate=30
+        )  # Update every 10 seconds, sampling rate of 30 fps
+
         # Periodically call get_heart_rate at regular intervals (e.g., every 3 seconds)
         while True:
             heart_rate = await heart_rate_tool.function({})
@@ -147,6 +160,7 @@ async def main():
 
             # Sleep for 3 seconds before checking again
             await asyncio.sleep(3)
+
 
 # Run the asyncio event loop
 if __name__ == "__main__":

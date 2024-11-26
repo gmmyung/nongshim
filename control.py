@@ -3,6 +3,7 @@ from gpiozero import PhaseEnableMotor
 import asyncio
 import pose_estimate
 
+
 class ControlServer:
     # HTML content for the webpage (from "index.html")
     HTML = open("index.html", "r").read()
@@ -33,7 +34,7 @@ class ControlServer:
 
     # Handle the root page
     async def handle_index(self, _):
-        return web.Response(text=self.HTML, content_type='text/html')
+        return web.Response(text=self.HTML, content_type="text/html")
 
     def control(self, velocity, steering):
         left_throttle = velocity + steering
@@ -54,7 +55,6 @@ class ControlServer:
         if not self.autonomous:
             self.control(velocity, steering)
         return web.Response(text="Input received")
-
 
     async def autonomous_control_loop(self):
         while True:
@@ -78,7 +78,9 @@ class ControlServer:
                         elif direction < -0.3:
                             steering = -0.5
 
-                    print(f"[Autonomous] Velocity={velocity:.2f}, Steering={steering:.2f}")
+                    print(
+                        f"[Autonomous] Velocity={velocity:.2f}, Steering={steering:.2f}"
+                    )
                     self.control(velocity, steering)
 
                 await asyncio.sleep(0.1)
@@ -92,14 +94,14 @@ class ControlServer:
     # Main function to set up the server
     async def run_server(self):
         app = web.Application()
-        app.router.add_get('/', self.handle_index)
-        app.router.add_post('/input', self.handle_input)
-        app.router.add_post('/abort', self.handle_abort)
-        app.router.add_post('/autonomous', self.handle_autonomous)
+        app.router.add_get("/", self.handle_index)
+        app.router.add_post("/input", self.handle_input)
+        app.router.add_post("/abort", self.handle_abort)
+        app.router.add_post("/autonomous", self.handle_autonomous)
 
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, '0.0.0.0', 8080)
+        site = web.TCPSite(runner, "0.0.0.0", 8080)
         print("Server running on http://localhost:8080")
         await site.start()
         # Keep running
@@ -111,6 +113,7 @@ class ControlServer:
 async def main():
     import cv2
     import logging
+
     FORMAT = "%(message)s"
     logging.basicConfig(level="INFO", format=FORMAT, datefmt="[%X]")
     stream = cv2.VideoCapture(0)

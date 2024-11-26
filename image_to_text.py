@@ -5,12 +5,14 @@ import logging
 from openai import AsyncOpenAI
 import base64
 
+
 # Define the Tool class
 class Tool:
     def __init__(self, name, description, function):
         self.name = name
         self.description = description
         self.function = function
+
 
 # Define the Webcam Capture and Description Tool
 class ImageDescriptionTool(Tool):
@@ -20,7 +22,7 @@ class ImageDescriptionTool(Tool):
             "type": "function",
             "name": "image_description",
             "description": "Capture an image of the working environment using the robot's webcam and generate a description of the image. You do not need to get permission to take photos of the surroundings.",
-            "parameters": {}
+            "parameters": {},
         }
         self.openai_api_key = openai_api_key
         self.function = self.capture_and_describe_image
@@ -57,9 +59,9 @@ class ImageDescriptionTool(Tool):
 
     def convert_image_to_base64(self, image):
         # Convert the image (numpy array) to a format suitable for OpenAI API (base64 encoded)
-        _, buffer = cv2.imencode('.jpg', image)
+        _, buffer = cv2.imencode(".jpg", image)
         img_bytes = buffer.tobytes()
-        image_base64 = base64.b64encode(img_bytes).decode('utf-8')
+        image_base64 = base64.b64encode(img_bytes).decode("utf-8")
         return image_base64
 
     async def get_image_description(self, image_base64):
@@ -68,19 +70,22 @@ class ImageDescriptionTool(Tool):
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": "You are a farmer assisting robot that can capture images from the robot's camera. Descibe the following image:"},
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:image/jpeg;base64,{image_base64}",
-                                    }
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "You are a farmer assisting robot that can capture images from the robot's camera. Descibe the following image:",
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{image_base64}",
                                 },
-                            ],
-                        }
-                    ],
+                            },
+                        ],
+                    }
+                ],
             )
 
             description = response.choices[0].message.content
@@ -90,6 +95,7 @@ class ImageDescriptionTool(Tool):
 
     def close(self):
         self.cap.release()
+
 
 # Usage Example:
 if __name__ == "__main__":
@@ -101,5 +107,6 @@ if __name__ == "__main__":
 
     # You can now call the tool's function asynchronously
     import asyncio
+
     result = asyncio.run(tool.capture_and_describe_image({}))
     print(result)

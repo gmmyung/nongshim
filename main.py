@@ -51,7 +51,9 @@ class RealTimeChat:
     @classmethod
     async def setup(cls, tools):
         self = cls(tools=tools)
-        self.websocket = await websockets.connect(self.URL, additional_headers=self.headers)
+        self.websocket = await websockets.connect(
+            self.URL, additional_headers=self.headers
+        )
         logging.info("Connected to OpenAI Realtime API")
         return self
 
@@ -76,9 +78,7 @@ class RealTimeChat:
                         "input_audio_transcription": {
                             "model": "whisper-1",
                         },
-                        "tools": [
-                            tool.description for tool in self.tools
-                        ],
+                        "tools": [tool.description for tool in self.tools],
                     },
                 },
             )
@@ -150,7 +150,7 @@ class RealTimeChat:
                                 }
                             )
                         )
-                        
+
                         logging.info(f"Sent function response")
                         break
 
@@ -270,6 +270,7 @@ class Tool:
         self.description = description
         self.function = function
 
+
 class Weather(Tool):
     def __init__(self):
         self.name = "get_weather"
@@ -291,6 +292,7 @@ class Weather(Tool):
         data = {"location": "daejeon", "temperature": 25, "humidity": 50}
         return data
 
+
 class Response:
     def __init__(self, status):
         self.transcript = ""
@@ -302,7 +304,9 @@ async def main():
     load_dotenv()
     weather = Weather()
     stream = cv2.VideoCapture(0)
-    heart_rate = HeartRateMonitor(stream=stream, sampling_rate=30, roi_size=20, update_interval=20)
+    heart_rate = HeartRateMonitor(
+        stream=stream, sampling_rate=30, roi_size=20, update_interval=20
+    )
     image_description = ImageDescriptionTool(os.getenv("OPENAI_API_KEY"), stream)
     chat = await RealTimeChat.setup(tools=[weather, image_description, heart_rate])
     chat_task = asyncio.create_task(chat.run())
