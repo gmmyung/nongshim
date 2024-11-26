@@ -47,6 +47,54 @@
         #abort-button:active {
             transform: scale(0.95);
         }
+        #autonomous-container {
+            display: flex;
+            align-items: center;
+            margin-top: 20px;
+        }
+        #autonomous-label {
+            font-size: 18px;
+            margin-right: 10px;
+            font-family: Arial, sans-serif;
+        }
+        #autonomous-toggle {
+            width: 60px;
+            height: 30px;
+            position: relative;
+        }
+        #autonomous-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        #slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            border-radius: 30px;
+            transition: background-color 0.2s ease;
+        }
+        #slider::before {
+            position: absolute;
+            content: "";
+            height: 24px;
+            width: 24px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s ease;
+        }
+        #autonomous-toggle input:checked + #slider {
+            background-color: #4caf50;
+        }
+        #autonomous-toggle input:checked + #slider::before {
+            transform: translateX(30px);
+        }
     </style>
 </head>
 <body>
@@ -55,16 +103,25 @@
     </div>
     <button id="abort-button">ABORT</button>
 
+    <div id="autonomous-container">
+        <label id="autonomous-label" for="autonomous-toggle">Autonomous Mode</label>
+        <div id="autonomous-toggle">
+            <input type="checkbox" id="toggle-checkbox">
+            <span id="slider"></span>
+        </div>
+    </div>
+
     <script>
         const joystick = document.getElementById('joystick');
         const container = document.getElementById('joystick-container');
         const abortButton = document.getElementById('abort-button');
+        const autonomousToggle = document.getElementById('toggle-checkbox');
         const centerX = container.offsetWidth / 2;
         const centerY = container.offsetHeight / 2;
 
         let isDragging = false;
 
-        joystick.addEventListener('pointerdown', (event) => {
+        joystick.addEventListener('pointerdown', () => {
             isDragging = true;
         });
 
@@ -103,6 +160,10 @@
             sendAbort();
         });
 
+        autonomousToggle.addEventListener('change', () => {
+            sendAutonomousMode(autonomousToggle.checked);
+        });
+
         async function sendInput(input) {
             await fetch(`/input`, {
                 method: 'POST',
@@ -117,6 +178,15 @@
                 headers: { 'Content-Type': 'application/json' }
             });
             alert("Abort signal sent!");
+        }
+
+        async function sendAutonomousMode(isAutonomous) {
+            await fetch(`/autonomous`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ autonomous: isAutonomous })
+            });
+            alert(`Autonomous mode ${isAutonomous ? 'enabled' : 'disabled'}`);
         }
     </script>
 </body>

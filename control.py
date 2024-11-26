@@ -7,6 +7,7 @@ class ControlServer:
     HTML = open("index.html", "r").read()
 
     def __init__(self) -> None:
+        self.autonomous = False
         self.lf_motor = PhaseEnableMotor(7, 8)
         self.rf_motor = PhaseEnableMotor(6, 13)
         self.lr_motor = PhaseEnableMotor(24, 23)
@@ -16,7 +17,7 @@ class ControlServer:
         self.lr_motor.enable_device.frequency = 500
         self.rr_motor.enable_device.frequency = 500
 
-    async def abort(self, _):
+    async def handle_abort(self, _):
         self.lf_motor.stop()
         self.rf_motor.stop()
         self.lr_motor.stop()
@@ -26,17 +27,13 @@ class ControlServer:
         loop = asyncio.get_event_loop()
         loop.stop()
 
+        return web.Response(text="Aborted")
+
     # Handle the root page
     async def handle_index(self, _):
         return web.Response(text=self.HTML, content_type='text/html')
 
-    # Handle joystick input
-    async def handle_input(self, request):
-        data = await request.json()
-        velocity = data.get("velocity", 0.0)
-        steering = data.get("steering", 0.0)
-        print(f"Received input: Velocity={velocity:.2f}, Steering={steering:.2f}")
-
+    def control(self, velocity, steering):
         left_throttle = velocity + steering
         right_throttle = velocity - steering
 
@@ -45,14 +42,29 @@ class ControlServer:
         self.lr_motor.value = left_throttle
         self.rr_motor.value = right_throttle
 
+    # Handle joystick input
+    async def handle_input(self, request):
+        data = await request.json()
+        velocity = data.get("velocity", 0.0)
+        steering = data.get("steering", 0.0)
+        print(f"Received input: Velocity={velocity:.2f}, Steering={steering:.2f}")
+
+        if not self.autonomous:
+            self.control(velocity, steering)
+
         return web.Response(text="Input received")
+
+    async def handle_autonomous(self, request):
+        self.autonomous = request.json().get("autonomous", False)
+        return web.Response(text="Autonomous mode updated")
 
     # Main function to set up the server
     async def run_server(self):
         app = web.Application()
         app.router.add_get('/', self.handle_index)
         app.router.add_post('/input', self.handle_input)
-        app.router.add_post('/abort', self.abort)
+        app.router.add_post('/abort', self.handle_abort)
+        app.router.add_post('/autonomous', self.handle_autonomous)
 
         runner = web.AppRunner(app)
         await runner.setup()
