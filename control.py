@@ -77,7 +77,8 @@ class ControlServer:
 
     async def handle_autonomous(self, request):
         print(request)
-        self.autonomous = request.json().get("autonomous", False)
+        request = await request.json()
+        self.autonomous = request.get("autonomous", False)
         return web.Response(text="Autonomous mode updated")
 
     # Main function to set up the server
