@@ -104,11 +104,11 @@
     <button id="abort-button">ABORT</button>
 
     <div id="autonomous-container">
-        <label id="autonomous-label" for="autonomous-toggle">Autonomous Mode</label>
-        <div id="autonomous-toggle">
+        <label id="autonomous-label" for="toggle-checkbox">Autonomous Mode</label>
+        <label id="autonomous-toggle">
             <input type="checkbox" id="toggle-checkbox">
             <span id="slider"></span>
-        </div>
+        </label>
     </div>
 
     <script>
@@ -162,6 +162,7 @@
 
         autonomousToggle.addEventListener('change', () => {
             sendAutonomousMode(autonomousToggle.checked);
+            alert(`Autonomous mode ${isAutonomous ? 'enabled' : 'disabled'}`);
         });
 
         async function sendInput(input) {

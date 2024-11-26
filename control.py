@@ -76,8 +76,8 @@ class ControlServer:
         return web.Response(text="Input received")
 
     async def handle_autonomous(self, request):
+        print(request)
         self.autonomous = request.json().get("autonomous", False)
-        print(f"Autonomous mode updated: {self.autonomous}")
         return web.Response(text="Autonomous mode updated")
 
     # Main function to set up the server
@@ -98,6 +98,9 @@ class ControlServer:
 
 async def main():
     import cv2
+    import logging
+    FORMAT = "%(message)s"
+    logging.basicConfig(level="INFO", format=FORMAT, datefmt="[%X]")
     stream = cv2.VideoCapture(0)
     pose_estimator = pose_estimate.PoseEstimator(stream)
     control_server = ControlServer(pose_estimator)
