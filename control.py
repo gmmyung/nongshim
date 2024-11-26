@@ -96,10 +96,13 @@ class ControlServer:
         # Keep running
         await asyncio.Event().wait()
 
-if __name__ == '__main__':
+async def main():
     import cv2
     stream = cv2.VideoCapture(0)
     pose_estimator = pose_estimate.PoseEstimator(stream)
     control_server = ControlServer(pose_estimator)
-    asyncio.run(control_server.run_server())
+    await control_server.run_server()
 
+
+if __name__ == "__main__":
+    asyncio.run(main())

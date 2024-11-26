@@ -42,13 +42,7 @@ class PoseEstimator(Tool):
             results = self.pose.process(image)
 
             if results.pose_landmarks:
-                self.mp_drawing.draw_landmarks(
-                    image, results.pose_landmarks, mp.solutions.pose.POSE_CONNECTIONS,
-                    landmark_drawing_spec=self.mp_drawing.DrawingSpec(color=(245,117,66), thickness=2, circle_radius=2),
-                    connection_drawing_spec=self.mp_drawing.DrawingSpec(color=(245,66,230), thickness=2, circle_radius=2)
-                )
                 self.fall_detected = self.detect_fall(results.pose_landmarks)
-
                 self.latest_position = self.calculate_farmer_position(results.pose_landmarks)
 
             # Maintain frame rate
