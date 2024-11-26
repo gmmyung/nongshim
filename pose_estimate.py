@@ -25,7 +25,7 @@ class PoseEstimator(Tool):
         self.mp_drawing = mp.solutions.drawing_utils
         self.fall_detected = False
         self.latest_position = None
-        asyncio.create_task(self.estimate_pose())
+        self.task = asyncio.create_task(self.estimate_pose())
 
     async def estimate_pose(self):
         """

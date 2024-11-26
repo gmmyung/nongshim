@@ -101,7 +101,9 @@ async def main():
     stream = cv2.VideoCapture(0)
     pose_estimator = pose_estimate.PoseEstimator(stream)
     control_server = ControlServer(pose_estimator)
-    await control_server.run_server()
+    server_task = asyncio.create_task(control_server.run_server())
+
+    await asyncio.gather(server_task, pose_estimator.task)
 
 
 if __name__ == "__main__":
