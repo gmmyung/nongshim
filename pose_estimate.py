@@ -1,6 +1,7 @@
 import cv2
 import mediapipe as mp
 import asyncio
+import math
 from mediapipe.framework.formats import landmark_pb2
 
 class Tool:
@@ -78,6 +79,53 @@ class PoseEstimator(Tool):
         }
 
     def calculate_farmer_position(self, landmarks):
+        """
+        Calculates the direction and distance for the farmer's pose using landmarks.
+        """
+        if landmarks is None:
+            return None
+
+        try:
+            # Get relevant landmarks
+            left_shoulder = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_SHOULDER]
+            right_shoulder = landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_SHOULDER]
+            left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP]
+            right_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_HIP]
+            world_landmarks = self.pose.process(cv2.cvtColor(self.stream.read()[1], cv2.COLOR_BGR2RGB)).pose_world_landmarks
+
+            hip_center = (left_hip.x + right_hip.x) / 2
+            hip_center = hip_center * 2 - 1
+
+            # Calculate the shoulder-to-shoulder distance in world coordinates
+            shoulder_distance_world = None
+            if world_landmarks:
+                left_shoulder_world = world_landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_SHOULDER]
+                right_shoulder_world = world_landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_SHOULDER]
+                shoulder_distance_world = math.sqrt(
+                    (left_shoulder_world.x - right_shoulder_world.x) ** 2 +
+                    (left_shoulder_world.y - right_shoulder_world.y) ** 2
+                )
+
+            # 2D screen coordinate distance
+            shoulder_distance_pixel = math.sqrt(
+                (left_shoulder.x - right_shoulder.x) ** 2 +
+                (left_shoulder.y - right_shoulder.y) ** 2
+            )
+
+            # Compute actual distance using the focal length scaling approach
+            focal_length = 0.75  # Replace with actual focal length if available
+            actual_shoulder_distance = (shoulder_distance_world * focal_length) / shoulder_distance_pixel if shoulder_distance_pixel > 0 else None
+
+            return {
+                "direction": hip_center,
+                "distance": actual_shoulder_distance,
+            }
+        except IndexError as e:
+            print(f"Failed to calculate farmer position: {e}")
+            return None
+
+
+    def calculate_farmer_position_(self, landmarks):
         """
         Calculates the direction and distance for the farmer's pose.
         """
