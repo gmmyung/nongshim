@@ -1,15 +1,20 @@
 from aiohttp import web
-from gpiozero import Robot, PhaseEnableMotor
+from gpiozero import PhaseEnableMotor
 import asyncio
 
 class ControlServer:
     # HTML content for the webpage (from "index.html")
     HTML = open("index.html", "r").read()
 
-    def __init__(self, dir_left: int, dir_right: int, pwm_left: int, pwm_right: int) -> None:
-        left_motor = PhaseEnableMotor(dir_left, pwm_left)
-        right_motor = PhaseEnableMotor(dir_right, pwm_right)
-        self.robot = Robot(left_motor, right_motor)
+    def __init__(self) -> None:
+        self.lf_motor = PhaseEnableMotor(7, 8)
+        self.rf_motor = PhaseEnableMotor(6, 1)
+        self.lr_motor = PhaseEnableMotor(24, 23)
+        self.rr_motor = PhaseEnableMotor(19, 26)
+        self.lf_motor.enable_device.frequency = 500
+        self.rf_motor.enable_device.frequency = 500
+        self.lr_motor.enable_device.frequency = 500
+        self.rr_motor.enable_device.frequency = 500
 
     # Handle the root page
     async def handle_index(self, _):
@@ -21,16 +26,14 @@ class ControlServer:
         velocity = data.get("velocity", 0.0)
         steering = data.get("steering", 0.0)
         print(f"Received input: Velocity={velocity:.2f}, Steering={steering:.2f}")
-        if velocity > 0.0:
-            if steering > 0.0:
-                self.robot.forward(velocity, curve_right=steering)
-            else:
-                self.robot.forward(velocity, curve_left=-steering)
-        else:
-            if steering > 0.0:
-                self.robot.backward(-velocity, curve_right=steering)
-            else:
-                self.robot.backward(-velocity, curve_left=-steering)
+
+        left_throttle = velocity + steering
+        right_throttle = velocity - steering
+
+        self.lf_motor.value = left_throttle
+        self.rf_motor.value = right_throttle
+        self.lr_motor.value = left_throttle
+        self.rr_motor.value = right_throttle
 
         return web.Response(text="Input received")
 
@@ -49,6 +52,6 @@ class ControlServer:
         await asyncio.Event().wait()
 
 if __name__ == '__main__':
-    control_server = ControlServer(14, 15, 18, 23)
+    control_server = ControlServer()
     asyncio.run(control_server.run_server())
 
