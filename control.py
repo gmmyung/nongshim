@@ -2,7 +2,10 @@ from aiohttp import web
 from gpiozero import PhaseEnableMotor
 import asyncio
 import pose_estimate
+import os
 
+# Check if this is real robot using $REAL_ROBOT environment variable
+REAL_ROBOT = bool(int(str(os.environ.get("REAL_ROBOT", 0))))
 
 class ControlServer:
     # HTML content for the webpage (from "index.html")
@@ -10,21 +13,23 @@ class ControlServer:
 
     def __init__(self, pose_estimator: pose_estimate.PoseEstimator) -> None:
         self.autonomous = False
-        self.lf_motor = PhaseEnableMotor(7, 8)
-        self.rf_motor = PhaseEnableMotor(6, 13)
-        self.lr_motor = PhaseEnableMotor(24, 23)
-        self.rr_motor = PhaseEnableMotor(19, 26)
-        self.lf_motor.enable_device.frequency = 500
-        self.rf_motor.enable_device.frequency = 500
-        self.lr_motor.enable_device.frequency = 500
-        self.rr_motor.enable_device.frequency = 500
+        if REAL_ROBOT:
+            self.lf_motor = PhaseEnableMotor(7, 8)
+            self.rf_motor = PhaseEnableMotor(6, 13)
+            self.lr_motor = PhaseEnableMotor(24, 23)
+            self.rr_motor = PhaseEnableMotor(19, 26)
+            self.lf_motor.enable_device.frequency = 500
+            self.rf_motor.enable_device.frequency = 500
+            self.lr_motor.enable_device.frequency = 500
+            self.rr_motor.enable_device.frequency = 500
         self.pose_estimator = pose_estimator
 
     async def handle_abort(self, _):
-        self.lf_motor.stop()
-        self.rf_motor.stop()
-        self.lr_motor.stop()
-        self.rr_motor.stop()
+        if REAL_ROBOT:
+            self.lf_motor.stop()
+            self.rf_motor.stop()
+            self.lr_motor.stop()
+            self.rr_motor.stop()
 
         # Exit the program
         loop = asyncio.get_event_loop()
@@ -40,10 +45,11 @@ class ControlServer:
         left_throttle = velocity + steering
         right_throttle = velocity - steering
 
-        self.lf_motor.value = left_throttle
-        self.rf_motor.value = right_throttle
-        self.lr_motor.value = left_throttle
-        self.rr_motor.value = right_throttle
+        if REAL_ROBOT:
+            self.lf_motor.value = left_throttle
+            self.rf_motor.value = right_throttle
+            self.lr_motor.value = left_throttle
+            self.rr_motor.value = right_throttle
 
     # Handle joystick input
     async def handle_input(self, request):
