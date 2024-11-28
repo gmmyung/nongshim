@@ -83,7 +83,7 @@ class ControlServer:
                     )
                     self.control(velocity, steering)
 
-                await asyncio.sleep(0.1)
+            await asyncio.sleep(0.1)
 
     async def handle_autonomous(self, request):
         print(request)

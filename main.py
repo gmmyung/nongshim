@@ -12,6 +12,7 @@ import websockets
 from audio import AudioPlayer, AudioRecorder
 from control import ControlServer
 from heart_rate import HeartRateMonitor
+from pose_estimate import PoseEstimator
 from image_to_text import ImageDescriptionTool
 
 
@@ -289,7 +290,7 @@ class Weather(Tool):
     async def get_weather(self, arguments):
         # dummy response
         logging.info(f"Fetching weather for {arguments}")
-        data = {"location": "daejeon", "temperature": 25, "humidity": 50}
+        data = {"location": "daejeon", "temperature": 4, "humidity": 50, "unit": "Celcius"}
         return data
 
 
@@ -310,7 +311,10 @@ async def main():
     image_description = ImageDescriptionTool(os.getenv("OPENAI_API_KEY"), stream)
     chat = await RealTimeChat.setup(tools=[weather, image_description, heart_rate])
     chat_task = asyncio.create_task(chat.run())
-    control_server = ControlServer()
+
+    pose_estimator = PoseEstimator(stream)
+    
+    control_server = ControlServer(pose_estimator)
     control_task = asyncio.create_task(control_server.run_server())
 
     await asyncio.gather(chat_task, control_task)
