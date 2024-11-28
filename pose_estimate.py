@@ -57,7 +57,7 @@ class PoseEstimator(Tool):
         """
         return {
             "fall_detected": self.fall_detected,
-            "direction": self.latest_position.get("direction", "Unknown") if self.latest_position else "Unknown",
+            "direction": self.latest_position.get("direction", "Unknown") if self.latest_position else None,
             "distance": self.latest_position.get("distance", None) if self.latest_position else None,
         }
 
