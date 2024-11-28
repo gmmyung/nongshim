@@ -3,8 +3,10 @@ from gpiozero import PhaseEnableMotor
 import asyncio
 import pose_estimate
 import os
+from dotenv import load_dotenv
 
 # Check if this is real robot using $REAL_ROBOT environment variable
+load_dotenv()
 REAL_ROBOT = bool(int(str(os.environ.get("REAL_ROBOT", 0))))
 
 class ControlServer:
