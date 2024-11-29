@@ -290,7 +290,12 @@ class Weather(Tool):
     async def get_weather(self, arguments):
         # dummy response
         logging.info(f"Fetching weather for {arguments}")
-        data = {"location": "daejeon", "temperature": 4, "humidity": 50, "unit": "Celcius"}
+        data = {
+            "location": "daejeon",
+            "temperature": 4,
+            "humidity": 50,
+            "unit": "Celcius",
+        }
         return data
 
 
@@ -313,7 +318,7 @@ async def main():
     chat_task = asyncio.create_task(chat.run())
 
     pose_estimator = PoseEstimator(stream)
-    
+
     control_server = ControlServer(pose_estimator)
     control_task = asyncio.create_task(control_server.run_server())
 

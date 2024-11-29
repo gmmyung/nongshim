@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 REAL_ROBOT = bool(int(str(os.environ.get("REAL_ROBOT", 0))))
 
+
 class ControlServer:
     # HTML content for the webpage (from "index.html")
     HTML = open("index.html", "r").read()
