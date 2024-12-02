@@ -9,6 +9,7 @@ import cv2
 from dotenv import load_dotenv
 import pyaudio
 import websockets
+from datetime import datetime
 from audio import AudioPlayer, AudioRecorder
 from control import ControlServer
 from heart_rate import HeartRateMonitor
@@ -48,6 +49,8 @@ class RealTimeChat:
         self.responses = {}
         self.playing = False
         self.tools: List[Tool] = tools
+        self.farming_log = {}
+        self.keywords = ["딸기", "해충", "수확", "비료"]
 
     @classmethod
     async def setup(cls, tools):
@@ -120,6 +123,12 @@ class RealTimeChat:
             future.set_result(data)
             del self.pending_events[message_type]
 
+        elif message_type == "conversation.item.input_audio_transcription.completed":
+            # 음성 입력 텍스트 변환 완료 이벤트 처리
+            transcript = data.get("transcript", "")
+            logging.info(f"[message_handler] Transcription completed with text: {transcript}")
+            self.update_farming_log(transcript, "USER")
+
         elif message_type == "conversation.item.created":
             item = data.get("item", {})
             item_type = item.get("type")
@@ -129,7 +138,10 @@ class RealTimeChat:
             if item_type == "function_call":
                 for tool in self.tools:
                     if item.get("name") == tool.description["name"]:
-                        function_response = await tool.function(item.get("arguments"))
+                        if item.get("name") == "log_briefing":
+                            function_response = await tool.function(self.farming_log)
+                        else:
+                            function_response = await tool.function(item.get("arguments"))
                         logging.info(f"Function response: {function_response}")
                         await self.websocket.send(
                             json.dumps(
@@ -264,6 +276,21 @@ class RealTimeChat:
 
             await asyncio.sleep(0.05)
 
+    def update_farming_log(self, transcript):
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        current_time = datetime.now().strftime("%H:%M:%S")
+
+        for keyword in self.keywords:
+            if keyword in transcript:
+                log_entry = f"[{current_time}] USER: {transcript}"
+
+                if current_date not in self.farming_log:
+                    self.farming_log[current_date] = []
+
+                self.farming_log[current_date].append(log_entry)
+                break
+
+
 
 class Tool:
     def __init__(self, name, description, function):
@@ -298,6 +325,31 @@ class Weather(Tool):
         }
         return data
 
+class Briefing(Tool):
+    def __init__(self):
+        self.name = "log_briefing"
+        self.description = {
+            "type": "function",
+            "name": "log_briefing",
+            "description": "Provide a summary or briefing of today's farming log.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        }
+        self.function = self.log_briefing
+
+    async def log_briefing(self, log):
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        if current_date not in log or not log[current_date]:
+            briefing = "오늘 영농일지가 비어 있습니다."
+        else:
+            entries = log[current_date]
+            briefing = f"오늘의 영농일지 브리핑:\n" + "\n".join(entries)
+
+        return {"briefing": briefing}
+
 
 class Response:
     def __init__(self, status):
@@ -309,12 +361,13 @@ class Response:
 async def main():
     load_dotenv()
     weather = Weather()
+    briefing = Briefing()
     stream = cv2.VideoCapture(0)
     heart_rate = HeartRateMonitor(
         stream=stream, sampling_rate=30, roi_size=20, update_interval=20
     )
     image_description = ImageDescriptionTool(os.getenv("OPENAI_API_KEY"), stream)
-    chat = await RealTimeChat.setup(tools=[weather, image_description, heart_rate])
+    chat = await RealTimeChat.setup(tools=[weather, image_description, heart_rate, briefing])
     chat_task = asyncio.create_task(chat.run())
 
     pose_estimator = PoseEstimator(stream)
