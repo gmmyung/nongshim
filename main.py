@@ -31,7 +31,7 @@ class RealTimeChat:
         turn_threshold=0.5,
         prefix_padding_ms=300,
         silence_duration_ms=500,
-        input_buffer_size=4096,
+        input_buffer_size=8192,
     ):
         self.input_buffer_size = input_buffer_size
         self.input_device_index = input_device_index
@@ -127,7 +127,7 @@ class RealTimeChat:
             # 음성 입력 텍스트 변환 완료 이벤트 처리
             transcript = data.get("transcript", "")
             logging.info(f"[message_handler] Transcription completed with text: {transcript}")
-            self.update_farming_log(transcript, "USER")
+            self.update_farming_log(transcript)
 
         elif message_type == "conversation.item.created":
             item = data.get("item", {})
