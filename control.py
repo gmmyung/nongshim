@@ -48,11 +48,38 @@ class ControlServer:
         left_throttle = velocity + steering
         right_throttle = velocity - steering
 
+        lf_throttle = left_throttle
+        lr_throttle = left_throttle
+        rf_throttle = right_throttle
+        rr_throttle = right_throttle
+
+        if steering > 0.3 * velocity:
+            rear_offset = 1.1
+            front_offset = 0.9
+
+            lf_throttle *= front_offset
+            lr_throttle *= rear_offset
+            rf_throttle *= front_offset
+            rr_throttle *= rear_offset
+
+            if lr_throttle > 1:
+                lr_throttle = 1
+            elif lr_throttle < -1:
+                lr_throttle = -1     
+            if rr_throttle > 1:
+                rr_throttle = 1
+            elif rr_throttle < -1:
+                rr_throttle = -1
+            
+        
         if REAL_ROBOT:
-            self.lf_motor.value = left_throttle
-            self.rf_motor.value = right_throttle
-            self.lr_motor.value = left_throttle
-            self.rr_motor.value = right_throttle
+            self.lf_motor.value = lf_throttle
+            self.lr_motor.value = lr_throttle
+            self.rf_motor.value = rf_throttle
+            self.rr_motor.value = rr_throttle
+        
+        
+            
 
     # Handle joystick input
     async def handle_input(self, request):
